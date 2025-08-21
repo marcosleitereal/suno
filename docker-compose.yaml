@@ -21,25 +21,20 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend/.env:/app/.env
+    env_file:
+      - ./backend/.env
     environment:
-      # Redis
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
-      REDIS_SSL: "False"
-      # LLM / Providers (ajuste conforme usar)
-      OPENAI_API_KEY: "${OPENAI_API_KEY}"
-      # Supabase
-      SUPABASE_URL: "${SUPABASE_URL}"
-      SUPABASE_ANON_KEY: "${SUPABASE_ANON_KEY}"
-      SUPABASE_SERVICE_ROLE_KEY: "${SUPABASE_SERVICE_ROLE_KEY}"
-      # Opcionais
-      TAVILY_API_KEY: "${TAVILY_API_KEY:-}"
-      FIRECRAWL_API_KEY: "${FIRECRAWL_API_KEY:-}"
-      QSTASH_TOKEN: "${QSTASH_TOKEN:-}"
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_SSL=False
     depends_on:
       redis:
         condition: service_healthy
+      worker:
+        condition: service_started
 
   worker:
     image: ghcr.io/suna-ai/suna-backend:latest
@@ -48,38 +43,28 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: uv run dramatiq --skip-logging --processes 4 --threads 4 run_agent_background
+    volumes:
+      - ./backend/.env:/app/.env:ro
+    env_file:
+      - ./backend/.env
     environment:
-      # Redis
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
-      REDIS_SSL: "False"
-      # LLM / Providers
-      OPENAI_API_KEY: "${OPENAI_API_KEY}"
-      # Supabase
-      SUPABASE_URL: "${SUPABASE_URL}"
-      SUPABASE_ANON_KEY: "${SUPABASE_ANON_KEY}"
-      SUPABASE_SERVICE_ROLE_KEY: "${SUPABASE_SERVICE_ROLE_KEY}"
-      # Opcionais
-      TAVILY_API_KEY: "${TAVILY_API_KEY:-}"
-      FIRECRAWL_API_KEY: "${FIRECRAWL_API_KEY:-}"
-      QSTASH_TOKEN: "${QSTASH_TOKEN:-}"
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_SSL=False
     depends_on:
       redis:
         condition: service_healthy
 
   frontend:
+    init: true
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    environment:
-      # URL interna para o backend (rede do compose)
-      NEXT_PUBLIC_BACKEND_URL: "http://backend:8000"
-      # Supabase (frontend precisa das públicas)
-      NEXT_PUBLIC_SUPABASE_URL: "${SUPABASE_URL}"
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: "${SUPABASE_ANON_KEY}"
+    volumes:
+      - ./frontend/.env.local:/app/.env.local:ro
     depends_on:
       - backend
 
